@@ -86,6 +86,7 @@ func createResponse(statusLine string, headers []string, responseBody string) st
 		sb.WriteString(h)
 		sb.WriteString("\r\n")
 	}
+	sb.WriteString("\r\n")
 
 	sb.WriteString(responseBody)
 
