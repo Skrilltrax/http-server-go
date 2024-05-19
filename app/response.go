@@ -8,11 +8,11 @@ import (
 type Response struct {
 	version Version
 	code    ResponseCode
-	headers []string
+	headers map[string]string
 	body    string
 }
 
-func NewResponse(version Version, code ResponseCode, headers []string, body string) *Response {
+func NewResponse(version Version, code ResponseCode, headers map[string]string, body string) *Response {
 	return &Response{
 		version: version,
 		code:    code,
@@ -30,8 +30,10 @@ func (response Response) String() string {
 	sb.WriteString("\r\n")
 
 	// Write Headers
-	for _, h := range response.headers {
-		sb.WriteString(h)
+	for key, value := range response.headers {
+		sb.WriteString(key)
+		sb.WriteString(": ")
+		sb.WriteString(value)
 		sb.WriteString("\r\n")
 	}
 	sb.WriteString("\r\n")

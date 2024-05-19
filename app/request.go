@@ -11,6 +11,7 @@ type Request struct {
 	method  RequestMethod
 	target  string
 	version Version
+	params  map[string]string
 	headers map[string]string
 	body    []byte
 }
@@ -27,10 +28,11 @@ func ParseRequest(reader *bufio.Reader) (*Request, error) {
 	}
 
 	headers := make(map[string]string)
+	params := make(map[string]string)
 	body := make([]byte, 0)
 
 	if !more {
-		return createRequest(method, target, version, headers, body)
+		return createRequest(method, target, version, params, headers, body)
 	}
 
 	for {
@@ -55,10 +57,10 @@ func ParseRequest(reader *bufio.Reader) (*Request, error) {
 		}
 	}
 
-	return createRequest(method, target, version, headers, body)
+	return createRequest(method, target, version, nil, headers, body)
 }
 
-func createRequest(method RequestMethod, target string, version Version, headers map[string]string, body []byte) (*Request, error) {
+func createRequest(method RequestMethod, target string, version Version, params map[string]string, headers map[string]string, body []byte) (*Request, error) {
 	return &Request{
 		method:  method,
 		target:  target,

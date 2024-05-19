@@ -8,6 +8,10 @@ const (
 	GET RequestMethod = "GET"
 )
 
+func (RequestMethod RequestMethod) String() string {
+	return string(RequestMethod)
+}
+
 func ParseRequestMethod(method string) (RequestMethod, error) {
 	switch method {
 	case "GET":
@@ -15,4 +19,8 @@ func ParseRequestMethod(method string) (RequestMethod, error) {
 	default:
 		return "", errors.New("invalid request method")
 	}
+}
+
+func GetAllRequestMethods() []RequestMethod {
+	return []RequestMethod{GET}
 }
