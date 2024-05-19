@@ -44,12 +44,6 @@ func (s *Server) Run() {
 			os.Exit(1)
 		}
 
-		//err = conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
-		//if err != nil {
-		//	log.Println("Failed to set reader deadline:", err)
-		//	os.Exit(1)
-		//}
-
 		// Handle Request
 		go s.handleRequest(conn)
 	}
