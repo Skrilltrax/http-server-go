@@ -38,25 +38,27 @@ func (s *Server) Run() {
 		os.Exit(1)
 	}
 
-	conn, err := l.Accept()
-	if err != nil {
-		fmt.Println("Error accepting connection: ", err.Error())
-		os.Exit(1)
-	}
+	for {
+		conn, err := l.Accept()
+		if err != nil {
+			fmt.Println("Error accepting connection: ", err.Error())
+			os.Exit(1)
+		}
 
-	err = conn.SetReadDeadline(time.Now().Add(1 * time.Second))
-	if err != nil {
-		log.Println("Failed to set reader deadline:", err)
-		// do something else, for example create new conn
-		return
-	}
+		err = conn.SetReadDeadline(time.Now().Add(1 * time.Second))
+		if err != nil {
+			log.Println("Failed to set reader deadline:", err)
+			// do something else, for example create new conn
+			return
+		}
 
-	// Handle Request
-	defer s.closeConnection(conn)
-	s.handleRequest(conn)
+		// Handle Request
+		go s.handleRequest(conn)
+	}
 }
 
 func (s *Server) handleRequest(conn net.Conn) {
+	defer s.closeConnection(conn)
 	reader := bufio.NewReader(conn)
 
 	request, err := ParseRequest(reader)
