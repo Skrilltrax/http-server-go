@@ -38,6 +38,8 @@ func (s *Server) Run() {
 		os.Exit(1)
 	}
 
+	defer l.Close()
+
 	for {
 		conn, err := l.Accept()
 		if err != nil {
