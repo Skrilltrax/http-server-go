@@ -38,8 +38,6 @@ func (s *Server) Run() {
 		os.Exit(1)
 	}
 
-	defer l.Close()
-
 	for {
 		conn, err := l.Accept()
 		if err != nil {
@@ -47,11 +45,10 @@ func (s *Server) Run() {
 			os.Exit(1)
 		}
 
-		err = conn.SetReadDeadline(time.Now().Add(1 * time.Second))
+		err = conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
 		if err != nil {
 			log.Println("Failed to set reader deadline:", err)
-			// do something else, for example create new conn
-			return
+			os.Exit(1)
 		}
 
 		// Handle Request
