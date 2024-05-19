@@ -45,7 +45,6 @@ func (s *Server) Run() {
 	// Handle Request
 	defer s.closeConnection(conn)
 	s.handleRequest(conn)
-
 }
 
 func (s *Server) handleRequest(conn net.Conn) {
@@ -135,7 +134,7 @@ func handleEcho(request Request) *Response {
 	headerMap["Content-Type"] = "text/plain"
 	headerMap["Content-Length"] = strconv.Itoa(len(strValue))
 
-	return NewResponse(HTTP11, Success, headerMap, "")
+	return NewResponse(HTTP11, Success, headerMap, strValue)
 }
 
 func main() {
