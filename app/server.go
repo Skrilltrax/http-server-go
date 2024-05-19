@@ -2,13 +2,12 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
-	"log"
 	"net"
 	"os"
 	"strconv"
 	"strings"
-	"time"
 )
 
 type Server struct {
@@ -45,11 +44,11 @@ func (s *Server) Run() {
 			os.Exit(1)
 		}
 
-		err = conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
-		if err != nil {
-			log.Println("Failed to set reader deadline:", err)
-			os.Exit(1)
-		}
+		//err = conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
+		//if err != nil {
+		//	log.Println("Failed to set reader deadline:", err)
+		//	os.Exit(1)
+		//}
 
 		// Handle Request
 		go s.handleRequest(conn)
@@ -58,7 +57,15 @@ func (s *Server) Run() {
 
 func (s *Server) handleRequest(conn net.Conn) {
 	defer s.closeConnection(conn)
-	reader := bufio.NewReader(conn)
+
+	buffer := make([]byte, 1024)
+	_, err := conn.Read(buffer)
+	if err != nil {
+		fmt.Println("Error reading from connection: ", err.Error())
+		return
+	}
+
+	reader := bufio.NewReader(bytes.NewReader(buffer))
 
 	request, err := ParseRequest(reader)
 	if err != nil {
