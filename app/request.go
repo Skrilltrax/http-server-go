@@ -17,7 +17,7 @@ type Request struct {
 }
 
 func ParseRequest(reader *bufio.Reader) (*Request, error) {
-	line, more, err := reader.ReadLine()
+	line, _, err := reader.ReadLine()
 	if err != nil {
 		return nil, err
 	}
@@ -28,39 +28,46 @@ func ParseRequest(reader *bufio.Reader) (*Request, error) {
 	}
 
 	headers := make(map[string]string)
-	params := make(map[string]string)
 	body := make([]byte, 0)
 
-	if !more {
-		return createRequest(method, target, version, params, headers, body)
-	}
-
+	// Read headers line by line
 	for {
-		line, more, err := reader.ReadLine()
-
+		line, _, err := reader.ReadLine()
 		if err != nil {
 			fmt.Println("Error reading line:", err)
 			return nil, err
 		}
 
-		if more {
-			headerArr, err := parseHeader(string(line))
-			if err != nil {
-				fmt.Println("Error parsing headers:", err)
-				return nil, err
-			}
-
-			headers[headerArr[0]] = headerArr[1]
-		} else {
-			body = line
+		if len(line) == 0 {
 			break
 		}
+
+		headerArr, err := parseHeader(string(line))
+		if err != nil {
+			fmt.Println("Error parsing headers:", err)
+			return nil, err
+		}
+
+		headers[headerArr[0]] = headerArr[1]
 	}
 
-	return createRequest(method, target, version, nil, headers, body)
+	// Parse body that does not end with \r\n
+	sb := strings.Builder{}
+	for {
+		data, err := reader.ReadByte()
+		if err != nil {
+			break
+		}
+
+		sb.WriteByte(data)
+	}
+
+	body = []byte(sb.String())
+
+	return createRequest(method, target, version, headers, body)
 }
 
-func createRequest(method RequestMethod, target string, version Version, params map[string]string, headers map[string]string, body []byte) (*Request, error) {
+func createRequest(method RequestMethod, target string, version Version, headers map[string]string, body []byte) (*Request, error) {
 	return &Request{
 		method:  method,
 		target:  target,
@@ -89,10 +96,14 @@ func parseStatusLine(line string) (RequestMethod, string, Version, error) {
 
 func parseHeader(line string) ([]string, error) {
 	headerArr := strings.SplitN(line, ":", 2)
+
 	if len(headerArr) != 2 {
 		fmt.Println("Invalid header line:", line)
 		return nil, errors.New("Invalid header line: " + line)
 	}
+
+	headerArr[0] = strings.TrimSpace(headerArr[0])
+	headerArr[1] = strings.TrimSpace(headerArr[1])
 
 	return headerArr, nil
 }

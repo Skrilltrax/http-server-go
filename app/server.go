@@ -3,10 +3,12 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"log"
 	"net"
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type Server struct {
@@ -40,6 +42,13 @@ func (s *Server) Run() {
 	if err != nil {
 		fmt.Println("Error accepting connection: ", err.Error())
 		os.Exit(1)
+	}
+
+	err = conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+	if err != nil {
+		log.Println("Failed to set reader deadline:", err)
+		// do something else, for example create new conn
+		return
 	}
 
 	// Handle Request
@@ -137,10 +146,21 @@ func handleEcho(request Request) *Response {
 	return NewResponse(HTTP11, Success, headerMap, strValue)
 }
 
+func handleUserAgent(request Request) *Response {
+	strValue := request.headers["User-Agent"]
+
+	headerMap := make(map[string]string)
+	headerMap["Content-Type"] = "text/plain"
+	headerMap["Content-Length"] = strconv.Itoa(len(strValue))
+
+	return NewResponse(HTTP11, Success, headerMap, strValue)
+}
+
 func main() {
 	s := NewServer()
 	s.AddHandler(GET, "/", handleIndexPage)
 	s.AddHandler(GET, "/echo/{str}", handleEcho)
+	s.AddHandler(GET, "/user-agent", handleUserAgent)
 
 	s.Run()
 }
