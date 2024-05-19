@@ -53,7 +53,7 @@ func (s *Server) Run() {
 		}
 
 		// Handle Request
-		s.handleRequest(conn)
+		go s.handleRequest(conn)
 	}
 }
 
