@@ -38,7 +38,7 @@ func handleRequest(conn net.Conn) {
 	}
 
 	var response *Response
-	if request.target == "/index.html" {
+	if request.target == "/" {
 		response = NewResponse(HTTP11, Success, []string{}, "")
 	} else {
 		response = NewResponse(HTTP11, NotFound, []string{}, "")
