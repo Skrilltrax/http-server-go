@@ -10,23 +10,31 @@ import (
 	"strings"
 )
 
-type Server struct {
-	handlers map[RequestMethod]map[string]func(request Request) *Response
+type Context struct {
+	directory string
 }
 
-func NewServer() *Server {
-	handlerMap := make(map[RequestMethod]map[string]func(request Request) *Response)
+type Server struct {
+	handlers map[RequestMethod]map[string]func(request Request, ctx Context) *Response
+	ctx      Context
+}
+
+func NewServer(directory string) *Server {
+	handlerMap := make(map[RequestMethod]map[string]func(request Request, ctx Context) *Response)
 
 	for _, method := range GetAllRequestMethods() {
-		handlerMap[method] = make(map[string]func(request Request) *Response)
+		handlerMap[method] = make(map[string]func(request Request, ctx Context) *Response)
 	}
+
+	ctx := Context{directory: directory}
 
 	return &Server{
 		handlers: handlerMap,
+		ctx:      ctx,
 	}
 }
 
-func (s *Server) AddHandler(method RequestMethod, path string, handler func(request Request) *Response) {
+func (s *Server) AddHandler(method RequestMethod, path string, handler func(request Request, ctx Context) *Response) {
 	s.handlers[method][path] = handler
 }
 
@@ -73,7 +81,7 @@ func (s *Server) handleRequest(conn net.Conn) {
 		response = NewResponse(HTTP11, NotFound, map[string]string{}, "")
 	}
 
-	var handlerFunc func(request Request) *Response
+	var handlerFunc func(request Request, ctx Context) *Response
 	paramMap := make(map[string]string)
 
 	for key, value := range s.handlers[request.method] {
@@ -116,7 +124,7 @@ func (s *Server) handleRequest(conn net.Conn) {
 		response = NewResponse(HTTP11, NotFound, map[string]string{}, "")
 	} else {
 		request.params = paramMap
-		response = handlerFunc(*request)
+		response = handlerFunc(*request, s.ctx)
 	}
 
 	_, err = conn.Write([]byte(response.String()))
@@ -134,11 +142,11 @@ func (s *Server) closeConnection(conn net.Conn) {
 	}
 }
 
-func handleIndexPage(request Request) *Response {
+func handleIndexPage(Request, Context) *Response {
 	return NewResponse(HTTP11, Success, map[string]string{}, "")
 }
 
-func handleEcho(request Request) *Response {
+func handleEcho(request Request, _ Context) *Response {
 	strValue := request.params["str"]
 	headerMap := make(map[string]string)
 
@@ -148,7 +156,7 @@ func handleEcho(request Request) *Response {
 	return NewResponse(HTTP11, Success, headerMap, strValue)
 }
 
-func handleUserAgent(request Request) *Response {
+func handleUserAgent(request Request, _ Context) *Response {
 	strValue := request.headers["User-Agent"]
 
 	headerMap := make(map[string]string)
@@ -158,11 +166,53 @@ func handleUserAgent(request Request) *Response {
 	return NewResponse(HTTP11, Success, headerMap, strValue)
 }
 
+func handleFiles(request Request, ctx Context) *Response {
+	fileName := request.params["fileName"]
+
+	fileInfo, err := os.Stat(ctx.directory + "/" + fileName)
+	if err != nil {
+		if os.IsNotExist(err) {
+			fmt.Println("The file does not exist.")
+		} else {
+			fmt.Println(err)
+		}
+
+		return NewResponse(HTTP11, NotFound, map[string]string{}, "")
+	}
+
+	file, err := os.Open(ctx.directory + "/" + fileName)
+	if err != nil {
+		fmt.Println("Error opening file: " + err.Error())
+		return NewResponse(HTTP11, NotFound, map[string]string{}, "")
+	}
+
+	fileByteArr := make([]byte, fileInfo.Size())
+	_, err = bufio.NewReader(file).Read(fileByteArr)
+	if err != nil {
+		fmt.Println("Error reading file: " + err.Error())
+		return NewResponse(HTTP11, NotFound, map[string]string{}, "")
+	}
+
+	headerMap := make(map[string]string)
+	headerMap["Content-Type"] = "application/octet-stream"
+	headerMap["Content-Length"] = strconv.Itoa(int(fileInfo.Size()))
+
+	return NewResponse(HTTP11, Success, headerMap, string(fileByteArr))
+}
+
 func main() {
-	s := NewServer()
+	var directory string
+	if len(os.Args) > 1 {
+		directory = os.Args[1]
+	} else {
+		directory, _ = os.Getwd()
+	}
+
+	s := NewServer(directory)
 	s.AddHandler(GET, "/", handleIndexPage)
 	s.AddHandler(GET, "/echo/{str}", handleEcho)
 	s.AddHandler(GET, "/user-agent", handleUserAgent)
+	s.AddHandler(GET, "/files/{fileName}", handleFiles)
 
 	s.Run()
 }
