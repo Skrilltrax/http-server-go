@@ -205,7 +205,7 @@ func handleFiles(request Request, ctx Context) *Response {
 func main() {
 	var directory string
 	if len(os.Args) > 1 {
-		directory = os.Args[1]
+		directory = os.Args[2]
 	} else {
 		directory, _ = os.Getwd()
 	}
