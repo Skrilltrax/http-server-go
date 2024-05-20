@@ -3,6 +3,8 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"compress/gzip"
+	"errors"
 	"fmt"
 	"io/fs"
 	"net"
@@ -121,7 +123,7 @@ func (s *Server) handleRequest(conn net.Conn) {
 		}
 	}
 
-	encoding := s.findEncoding(request)
+	encodings := s.findEncoding(request)
 
 	if handlerFunc == nil {
 		response = NewResponse(HTTP11, NotFound, map[string]string{}, "")
@@ -130,24 +132,72 @@ func (s *Server) handleRequest(conn net.Conn) {
 		response = handlerFunc(*request, s.ctx)
 	}
 
-	if encoding != Unknown {
-		response.headers["Content-Encoding"] = encoding.String()
-	}
+	response = s.encodeResponse(encodings, response)
 
 	_, err = conn.Write([]byte(response.String()))
 }
 
-func (s *Server) findEncoding(request *Request) Encoding {
+func (s *Server) encodeResponse(encodings []Encoding, response *Response) *Response {
+	sb := strings.Builder{}
+
+	for i, encoding := range encodings {
+		switch encoding {
+		case Gzip:
+			encodedBody, err := s.encodeGzip(response.body)
+			if err != nil {
+				fmt.Println("Error encoding: ", err.Error())
+				continue
+			}
+
+			response.body = encodedBody
+		}
+
+		sb.WriteString(encoding.String())
+
+		if i != len(encodings)-1 {
+			sb.WriteString(", ")
+		}
+	}
+
+	if len(sb.String()) != 0 {
+		response.headers["Content-Encoding"] = sb.String()
+	}
+
+	return response
+}
+
+func (s *Server) encodeGzip(responseBody string) (string, error) {
+	var b bytes.Buffer
+	gw := gzip.NewWriter(&b)
+
+	_, err := gw.Write([]byte(responseBody))
+	if err != nil {
+		fmt.Println("Error writing response: ", err.Error())
+		return "", errors.New("Error writing response: " + err.Error())
+	}
+
+	err = gw.Close()
+	if err != nil {
+		fmt.Println("Error closing gzip writer: ", err.Error())
+		return "", errors.New("error closing gzip writer")
+	}
+
+	return b.String(), nil
+}
+
+func (s *Server) findEncoding(request *Request) []Encoding {
+	var encodings []Encoding
+
 	encodingValue := request.headers["accept-encoding"]
 
 	for _, encodingStr := range strings.Split(encodingValue, ",") {
 		enc := getEncoding(encodingStr)
 		if enc != Unknown {
-			return enc
+			encodings = append(encodings, enc)
 		}
 	}
 
-	return Unknown
+	return encodings
 }
 
 func (s *Server) isPathParam(item string) bool {
