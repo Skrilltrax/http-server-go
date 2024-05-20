@@ -121,6 +121,8 @@ func (s *Server) handleRequest(conn net.Conn) {
 		}
 	}
 
+	encoding := s.findEncoding(request)
+
 	if handlerFunc == nil {
 		response = NewResponse(HTTP11, NotFound, map[string]string{}, "")
 	} else {
@@ -128,7 +130,22 @@ func (s *Server) handleRequest(conn net.Conn) {
 		response = handlerFunc(*request, s.ctx)
 	}
 
+	response.headers["Content-Encoding"] = encoding.String()
+
 	_, err = conn.Write([]byte(response.String()))
+}
+
+func (s *Server) findEncoding(request *Request) Encoding {
+	encodingValue := request.headers["accept-encoding"]
+
+	for _, encodingStr := range strings.Split(encodingValue, ",") {
+		enc := getEncoding(encodingStr)
+		if enc != Unknown {
+			return enc
+		}
+	}
+
+	return Unknown
 }
 
 func (s *Server) isPathParam(item string) bool {
@@ -158,7 +175,7 @@ func handleEcho(request Request, _ Context) *Response {
 }
 
 func handleUserAgent(request Request, _ Context) *Response {
-	strValue := request.headers["User-Agent"]
+	strValue := request.headers["user-agent"]
 
 	headerMap := make(map[string]string)
 	headerMap["Content-Type"] = "text/plain"

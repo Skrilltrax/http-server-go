@@ -102,8 +102,8 @@ func parseHeader(line string) ([]string, error) {
 		return nil, errors.New("Invalid header line: " + line)
 	}
 
-	headerArr[0] = strings.TrimSpace(headerArr[0])
-	headerArr[1] = strings.TrimSpace(headerArr[1])
+	headerArr[0] = strings.ToLower(strings.TrimSpace(headerArr[0]))
+	headerArr[1] = strings.ToLower(strings.TrimSpace(headerArr[1]))
 
 	return headerArr, nil
 }
