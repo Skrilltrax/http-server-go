@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"compress/gzip"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -182,7 +183,7 @@ func (s *Server) encodeGzip(responseBody string) (string, error) {
 		return "", errors.New("error closing gzip writer")
 	}
 
-	return b.String(), nil
+	return hex.EncodeToString(b.Bytes()), nil
 }
 
 func (s *Server) findEncoding(request *Request) []Encoding {
