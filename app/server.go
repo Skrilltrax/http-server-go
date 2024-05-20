@@ -169,6 +169,8 @@ func handleUserAgent(request Request, _ Context) *Response {
 func handleFiles(request Request, ctx Context) *Response {
 	fileName := request.params["fileName"]
 
+	fmt.Println(ctx.directory + "/" + fileName)
+
 	fileInfo, err := os.Stat(ctx.directory + "/" + fileName)
 	if err != nil {
 		if os.IsNotExist(err) {
