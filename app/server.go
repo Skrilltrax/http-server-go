@@ -130,7 +130,9 @@ func (s *Server) handleRequest(conn net.Conn) {
 		response = handlerFunc(*request, s.ctx)
 	}
 
-	response.headers["Content-Encoding"] = encoding.String()
+	if encoding != Unknown {
+		response.headers["Content-Encoding"] = encoding.String()
+	}
 
 	_, err = conn.Write([]byte(response.String()))
 }
