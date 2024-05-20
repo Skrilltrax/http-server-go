@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"io/fs"
 	"net"
 	"os"
 	"strconv"
@@ -166,10 +167,8 @@ func handleUserAgent(request Request, _ Context) *Response {
 	return NewResponse(HTTP11, Success, headerMap, strValue)
 }
 
-func handleFiles(request Request, ctx Context) *Response {
+func handleGetFiles(request Request, ctx Context) *Response {
 	fileName := request.params["fileName"]
-
-	fmt.Println(ctx.directory + "/" + fileName)
 
 	fileInfo, err := os.Stat(ctx.directory + "/" + fileName)
 	if err != nil {
@@ -202,6 +201,28 @@ func handleFiles(request Request, ctx Context) *Response {
 	return NewResponse(HTTP11, Success, headerMap, string(fileByteArr))
 }
 
+func handlePostFiles(request Request, ctx Context) *Response {
+	fileName := request.params["fileName"]
+	filePath := ctx.directory + "/" + fileName
+
+	err := os.MkdirAll(ctx.directory, 0777)
+	if err != nil {
+		fmt.Println("Error creating directory: " + err.Error())
+		return NewResponse(HTTP11, InternalServerError, map[string]string{}, "")
+	}
+
+	byteArr := request.body
+	byteArr = bytes.Trim(byteArr, "\x00")
+
+	err = os.WriteFile(filePath, byteArr, fs.ModePerm)
+	if err != nil {
+		fmt.Println("Error writing to file: " + err.Error())
+		return NewResponse(HTTP11, InternalServerError, map[string]string{}, "")
+	}
+
+	return NewResponse(HTTP11, Created, map[string]string{}, "")
+}
+
 func main() {
 	var directory string
 	if len(os.Args) > 1 {
@@ -214,7 +235,8 @@ func main() {
 	s.AddHandler(GET, "/", handleIndexPage)
 	s.AddHandler(GET, "/echo/{str}", handleEcho)
 	s.AddHandler(GET, "/user-agent", handleUserAgent)
-	s.AddHandler(GET, "/files/{fileName}", handleFiles)
+	s.AddHandler(GET, "/files/{fileName}", handleGetFiles)
+	s.AddHandler(POST, "/files/{fileName}", handlePostFiles)
 
 	s.Run()
 }
